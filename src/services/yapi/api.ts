@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { getBrowserCookieHeader, getBrowserCookieHelpText } from "./browserCookie";
 import { Logger } from "./logger";
 import type {
   ApiInterface,
@@ -138,6 +139,35 @@ export class YApiService {
     return headers;
   }
 
+  private async sendAdvancedMockRequest<T>(
+    endpoint: string,
+    params: Record<string, any>,
+    projectId: string,
+    method: 'GET' | 'POST',
+    headers: Record<string, string>
+  ): Promise<T> {
+    const token = this.getToken(projectId);
+
+    if (method === 'GET') {
+      const response = await axios.get(`${this.baseUrl}${endpoint}`, {
+        headers,
+        params: {
+          ...params,
+          ...(this.advancedMockUseToken && token ? { token } : {})
+        }
+      });
+
+      return response.data;
+    }
+
+    const response = await axios.post(`${this.baseUrl}${endpoint}`, {
+      ...params,
+      ...(this.advancedMockUseToken && token ? { token } : {})
+    }, { headers });
+
+    return response.data;
+  }
+
   private async advancedMockRequest<T>(
     endpoint: string,
     params: Record<string, any> = {},
@@ -147,30 +177,29 @@ export class YApiService {
     try {
       this.logger.debug(`调用高级Mock ${this.baseUrl}${endpoint} 方法: ${method}`);
 
-      const token = this.getToken(projectId);
       const headers = this.buildAdvancedMockHeaders();
-      let response;
+      const response = await this.sendAdvancedMockRequest<any>(endpoint, params, projectId, method, headers);
 
-      if (method === 'GET') {
-        response = await axios.get(`${this.baseUrl}${endpoint}`, {
-          headers,
-          params: {
-            ...params,
-            ...(this.advancedMockUseToken && token ? { token } : {})
+      if (response.errcode === 40011) {
+        this.logger.info("高级 Mock project token 请求返回未登录，尝试从浏览器读取 Cookie 后重试");
+        try {
+          const cookie = await getBrowserCookieHeader(this.baseUrl);
+          if (cookie) {
+            const retryHeaders = { ...headers, Cookie: cookie };
+            const retryResponse = await this.sendAdvancedMockRequest<T>(endpoint, params, projectId, method, retryHeaders);
+            if ((retryResponse as any)?.errcode !== 40011) {
+              return retryResponse;
+            }
           }
-        });
-      } else {
-        response = await axios.post(`${this.baseUrl}${endpoint}`, {
-          ...params,
-          ...(this.advancedMockUseToken && token ? { token } : {})
-        }, { headers });
+        } catch (cookieError) {
+          const message = cookieError instanceof Error ? cookieError.message : JSON.stringify(cookieError);
+          throw new Error(`YApi 高级 Mock 插件返回未登录，且自动读取浏览器 Cookie 失败: ${message}\n${getBrowserCookieHelpText()}`);
+        }
+
+        throw new Error(`YApi 高级 Mock 插件返回未登录。已按项目 token 请求，并尝试读取浏览器 Cookie 后重试但仍失败。\n${getBrowserCookieHelpText()}`);
       }
 
-      if (response.data?.errcode === 40011) {
-        throw new Error("YApi 高级 Mock 插件返回未登录。已按项目 token 方式请求；如果仍失败，请配置 YAPI_MOCK_COOKIE 或 YAPI_MOCK_AUTH_HEADER");
-      }
-
-      return response.data;
+      return response;
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
         const errmsg = error.response.data?.errmsg || error.response.data?.message || "未知错误";

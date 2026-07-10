@@ -57,12 +57,14 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "remeda": "^2.20.1",
+    "ws": "^8.21.0",
     "yargs": "^17.7.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^20.17.32",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
     "cross-env": "^7.0.3",

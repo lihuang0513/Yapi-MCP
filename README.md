@@ -37,7 +37,7 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 - **yapi_get_mock_case**: 获取某个高级 Mock case 详情
 - **yapi_save_mock_case**: 新增或更新高级 Mock case
 
-> 高级 Mock 默认会像普通接口一样携带项目 Token。部分 YApi 高级 Mock 插件接口不接受项目 Token，如果返回未登录，再额外配置 `YAPI_MOCK_COOKIE` 或 `YAPI_MOCK_AUTH_HEADER`。
+> 高级 Mock 默认会像普通接口一样携带项目 Token。部分 YApi 高级 Mock 插件接口不接受项目 Token，如果返回未登录，会尝试从本机 Chrome DevTools 读取当前浏览器登录态 Cookie 后重试；仍失败时也可以额外配置 `YAPI_MOCK_COOKIE` 或 `YAPI_MOCK_AUTH_HEADER`。
 
 ### 🎯 智能特性
 
@@ -114,7 +114,8 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
       "env": {
         "YAPI_BASE_URL": "https://yapi.example.com",
         "YAPI_TOKEN": "projectId:token1,projectId2:token2",
-        "YAPI_MOCK_COOKIE": "_yapi_token=xxx; _yapi_uid=xxx",
+        "YAPI_MOCK_BROWSER_COOKIE": "true",
+        "YAPI_MOCK_BROWSER_DEBUG_URL": "http://127.0.0.1:9222",
         "YAPI_CACHE_TTL": "10",
         "YAPI_LOG_LEVEL": "info"
       }
@@ -143,11 +144,13 @@ YAPI_BASE_URL=https://your-yapi-domain.com
 YAPI_TOKEN=projectId:your_token_here,projectId2:your_token2_here
 
 # YApi 高级 Mock 插件配置
-# 默认和普通接口一致，携带项目 token。部分插件接口仍可能要求登录态。
+# 默认和普通接口一致，先携带项目 token。
 YAPI_MOCK_USE_TOKEN=true
-# 如果插件接口返回未登录，可从浏览器 DevTools 对高级 Mock 请求 Copy as cURL，取其中 Cookie
-YAPI_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
-# 也可以配置多行请求头，优先级高于 YAPI_MOCK_COOKIE
+# 如果插件接口返回未登录，默认从本机 Chrome DevTools 自动读取浏览器 Cookie 后重试。
+YAPI_MOCK_BROWSER_COOKIE=true
+YAPI_MOCK_BROWSER_DEBUG_URL=http://127.0.0.1:9222
+# 如果不想使用浏览器自动读取，也可以配置固定 Cookie 或多行请求头。
+# YAPI_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
 # YAPI_MOCK_AUTH_HEADER=Cookie: _yapi_token=xxx; _yapi_uid=xxx
 
 # 服务器配置
@@ -159,6 +162,18 @@ YAPI_LOG_LEVEL=info
 ```
 
 3. **启动服务**：
+
+如果需要高级 Mock 自动读取浏览器 Cookie，请先用远程调试端口启动 Chrome，并确保该浏览器已登录 YApi：
+
+```bash
+open -na "Google Chrome" --args --remote-debugging-port=9222
+```
+
+如果 Chrome 使用了自定义端口，请同步设置：
+
+```bash
+YAPI_MOCK_BROWSER_DEBUG_URL=http://127.0.0.1:9222
+```
 
 **SSE 模式**（HTTP 服务）：
 
@@ -272,6 +287,13 @@ YAPI_TOKEN=projectId:your_token_here
 PORT=3388                    # HTTP 服务端口
 YAPI_CACHE_TTL=10           # 缓存时效（分钟）
 YAPI_LOG_LEVEL=info         # 日志级别：debug, info, warn, error, none
+
+# 高级 Mock 可选配置
+YAPI_MOCK_USE_TOKEN=true
+YAPI_MOCK_BROWSER_COOKIE=true
+YAPI_MOCK_BROWSER_DEBUG_URL=http://127.0.0.1:9222
+# YAPI_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
+# YAPI_MOCK_AUTH_HEADER=Cookie: _yapi_token=xxx; _yapi_uid=xxx
 ```
 
 ### 日志级别说明
