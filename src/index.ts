@@ -41,9 +41,9 @@ export async function startServer(): Promise<void> {
   logger.info("- yapi_search_apis: 搜索YApi接口");
   logger.info("- yapi_list_projects: 列出YApi的项目ID和项目名称");
   logger.info("- yapi_get_categories: 获取YApi项目下的接口分类列表");
-  logger.info("- yapi_advmock_list_cases: 列出YApi高级Mock case");
-  logger.info("- yapi_advmock_save_case: 新增或更新YApi高级Mock case");
-  logger.info("- yapi_advmock_create_post_list_case: 创建主队社区帖子列表高级Mock case");
+  logger.info("- yapi_list_mock_cases: 列出YApi高级Mock case");
+  logger.info("- yapi_get_mock_case: 获取YApi高级Mock case详情");
+  logger.info("- yapi_save_mock_case: 新增或更新YApi高级Mock case");
 }
 
 // If this file is being run directly, start the server

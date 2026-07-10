@@ -32,9 +32,10 @@ export class YApiService {
     this.tokenMap = new Map();
     this.defaultToken = "";
     this.logger = new Logger('YApiService', logLevel);
-    this.advancedMockCookie = process.env.YAPI_ADV_MOCK_COOKIE || "";
-    this.advancedMockAuthHeader = process.env.YAPI_ADV_MOCK_AUTH_HEADER || "";
-    this.advancedMockUseToken = process.env.YAPI_ADV_MOCK_USE_TOKEN === "true";
+    this.advancedMockCookie = process.env.YAPI_MOCK_COOKIE || "";
+    this.advancedMockAuthHeader = process.env.YAPI_MOCK_AUTH_HEADER || "";
+    const useToken = process.env.YAPI_MOCK_USE_TOKEN;
+    this.advancedMockUseToken = useToken ? useToken !== "false" : true;
     
     // 解析token字符串，格式为: "projectId:token,projectId:token,..."
     if (token) {
@@ -159,11 +160,14 @@ export class YApiService {
           }
         });
       } else {
-        response = await axios.post(`${this.baseUrl}${endpoint}`, params, { headers });
+        response = await axios.post(`${this.baseUrl}${endpoint}`, {
+          ...params,
+          ...(this.advancedMockUseToken && token ? { token } : {})
+        }, { headers });
       }
 
       if (response.data?.errcode === 40011) {
-        throw new Error("YApi 高级 Mock 插件要求登录态，请配置 YAPI_ADV_MOCK_COOKIE 或 YAPI_ADV_MOCK_AUTH_HEADER");
+        throw new Error("YApi 高级 Mock 插件返回未登录。已按项目 token 方式请求；如果仍失败，请配置 YAPI_MOCK_COOKIE 或 YAPI_MOCK_AUTH_HEADER");
       }
 
       return response.data;

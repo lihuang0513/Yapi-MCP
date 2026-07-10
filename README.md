@@ -33,11 +33,11 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 
 ### 🧪 高级 Mock 管理
 
-- **yapi_advmock_list_cases**: 获取某个接口下的高级 Mock case 列表
-- **yapi_advmock_save_case**: 新增或更新高级 Mock case
-- **yapi_advmock_create_post_list_case**: 快速为主队社区帖子列表接口创建高级 Mock 样例
+- **yapi_list_mock_cases**: 获取某个接口下的高级 Mock case 列表
+- **yapi_get_mock_case**: 获取某个高级 Mock case 详情
+- **yapi_save_mock_case**: 新增或更新高级 Mock case
 
-> YApi 高级 Mock 插件接口通常需要登录态 Cookie。项目 Token 仍用于普通接口文档能力，高级 Mock 请额外配置 `YAPI_ADV_MOCK_COOKIE` 或 `YAPI_ADV_MOCK_AUTH_HEADER`。
+> 高级 Mock 默认会像普通接口一样携带项目 Token。部分 YApi 高级 Mock 插件接口不接受项目 Token，如果返回未登录，再额外配置 `YAPI_MOCK_COOKIE` 或 `YAPI_MOCK_AUTH_HEADER`。
 
 ### 🎯 智能特性
 
@@ -114,7 +114,7 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
       "env": {
         "YAPI_BASE_URL": "https://yapi.example.com",
         "YAPI_TOKEN": "projectId:token1,projectId2:token2",
-        "YAPI_ADV_MOCK_COOKIE": "_yapi_token=xxx; _yapi_uid=xxx",
+        "YAPI_MOCK_COOKIE": "_yapi_token=xxx; _yapi_uid=xxx",
         "YAPI_CACHE_TTL": "10",
         "YAPI_LOG_LEVEL": "info"
       }
@@ -143,12 +143,12 @@ YAPI_BASE_URL=https://your-yapi-domain.com
 YAPI_TOKEN=projectId:your_token_here,projectId2:your_token2_here
 
 # YApi 高级 Mock 插件配置
-# 从浏览器 DevTools 对 /api/plugin/advmock/case/save 的请求 Copy as cURL，取其中 Cookie 即可
-YAPI_ADV_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
-# 也可以配置多行请求头，优先级高于 YAPI_ADV_MOCK_COOKIE
-# YAPI_ADV_MOCK_AUTH_HEADER=Cookie: _yapi_token=xxx; _yapi_uid=xxx
-# 插件接口通常不认项目 token，仅调试时启用
-YAPI_ADV_MOCK_USE_TOKEN=false
+# 默认和普通接口一致，携带项目 token。部分插件接口仍可能要求登录态。
+YAPI_MOCK_USE_TOKEN=true
+# 如果插件接口返回未登录，可从浏览器 DevTools 对高级 Mock 请求 Copy as cURL，取其中 Cookie
+YAPI_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
+# 也可以配置多行请求头，优先级高于 YAPI_MOCK_COOKIE
+# YAPI_MOCK_AUTH_HEADER=Cookie: _yapi_token=xxx; _yapi_uid=xxx
 
 # 服务器配置
 PORT=3388
@@ -224,14 +224,14 @@ Token 格式说明：
    > "更新用户登录接口，添加验证码参数"
 
 5. **创建高级 Mock case**：
-   > "给项目 356 的接口 6084 创建一个帖子列表高级 Mock，zone_id=3001"
+   > "给项目 356 的接口 6084 创建一个高级 Mock，匹配参数是 id=1，响应体是 ..."
 
 6. **查看高级 Mock case**：
    > "列出项目 356 接口 6084 的高级 Mock case"
 
 ### 高级 Mock 工具参数
 
-**yapi_advmock_save_case** 支持以下主要参数：
+**yapi_save_mock_case** 支持以下主要参数：
 
 | 参数 | 描述 |
 | ---- | ---- |
