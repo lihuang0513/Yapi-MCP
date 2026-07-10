@@ -8,6 +8,7 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 
 - 🔍 **搜索和查看** YApi 项目中的接口文档
 - ✏️ **创建和更新** 接口定义
+- 🧪 **创建和更新** YApi 高级 Mock case
 - 📋 **管理项目和分类** 结构
 - 🔗 **无缝集成** AI 编程工作流
 - 🛠 **支持多个 YApi Project配置**
@@ -29,6 +30,14 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
   - 支持完整的接口定义（路径、方法、参数、请求体、响应等）
   - 支持 JSON Schema 和表单数据格式
   - 自动处理接口状态和分类管理
+
+### 🧪 高级 Mock 管理
+
+- **yapi_advmock_list_cases**: 获取某个接口下的高级 Mock case 列表
+- **yapi_advmock_save_case**: 新增或更新高级 Mock case
+- **yapi_advmock_create_post_list_case**: 快速为主队社区帖子列表接口创建高级 Mock 样例
+
+> YApi 高级 Mock 插件接口通常需要登录态 Cookie。项目 Token 仍用于普通接口文档能力，高级 Mock 请额外配置 `YAPI_ADV_MOCK_COOKIE` 或 `YAPI_ADV_MOCK_AUTH_HEADER`。
 
 ### 🎯 智能特性
 
@@ -105,6 +114,7 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
       "env": {
         "YAPI_BASE_URL": "https://yapi.example.com",
         "YAPI_TOKEN": "projectId:token1,projectId2:token2",
+        "YAPI_ADV_MOCK_COOKIE": "_yapi_token=xxx; _yapi_uid=xxx",
         "YAPI_CACHE_TTL": "10",
         "YAPI_LOG_LEVEL": "info"
       }
@@ -131,6 +141,14 @@ pnpm install
 # YApi 基础配置
 YAPI_BASE_URL=https://your-yapi-domain.com
 YAPI_TOKEN=projectId:your_token_here,projectId2:your_token2_here
+
+# YApi 高级 Mock 插件配置
+# 从浏览器 DevTools 对 /api/plugin/advmock/case/save 的请求 Copy as cURL，取其中 Cookie 即可
+YAPI_ADV_MOCK_COOKIE=_yapi_token=xxx; _yapi_uid=xxx
+# 也可以配置多行请求头，优先级高于 YAPI_ADV_MOCK_COOKIE
+# YAPI_ADV_MOCK_AUTH_HEADER=Cookie: _yapi_token=xxx; _yapi_uid=xxx
+# 插件接口通常不认项目 token，仅调试时启用
+YAPI_ADV_MOCK_USE_TOKEN=false
 
 # 服务器配置
 PORT=3388
@@ -204,6 +222,29 @@ Token 格式说明：
 
 4. **更新接口**：
    > "更新用户登录接口，添加验证码参数"
+
+5. **创建高级 Mock case**：
+   > "给项目 356 的接口 6084 创建一个帖子列表高级 Mock，zone_id=3001"
+
+6. **查看高级 Mock case**：
+   > "列出项目 356 接口 6084 的高级 Mock case"
+
+### 高级 Mock 工具参数
+
+**yapi_advmock_save_case** 支持以下主要参数：
+
+| 参数 | 描述 |
+| ---- | ---- |
+| `projectId` | YApi 项目 ID |
+| `interfaceId` | YApi 接口 ID |
+| `caseId` | 高级 Mock case ID，更新时传 |
+| `name` | case 名称 |
+| `paramsJson` | 匹配参数 JSON 字符串，例如 `{"id":"1"}` |
+| `resBody` | 响应体字符串，通常传 JSON 字符串 |
+| `code` | HTTP 状态码，默认 `200` |
+| `delay` | 延迟毫秒，默认 `0` |
+| `headersJson` | 响应头 JSON 数组字符串，默认 `[]` |
+| `ipEnable` | 是否启用 IP 匹配，默认 `false` |
 
 ## 高级配置
 

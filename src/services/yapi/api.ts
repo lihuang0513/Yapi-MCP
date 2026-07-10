@@ -10,7 +10,10 @@ import type {
   GetProjectResponse,
   GetCategoryListResponse,
   SaveApiInterfaceParams,
-  SaveApiResponse
+  SaveApiResponse,
+  AdvancedMockCaseParams,
+  AdvancedMockListResponse,
+  AdvancedMockSaveResponse
 } from "./types";
 
 export class YApiService {
@@ -20,12 +23,18 @@ export class YApiService {
   private projectInfoCache: Map<string, ProjectInfo> = new Map(); // 缓存项目信息
   private categoryListCache: Map<string, CategoryInfo[]> = new Map(); // 缓存项目分类列表
   private readonly logger: Logger;
+  private readonly advancedMockCookie: string;
+  private readonly advancedMockAuthHeader: string;
+  private readonly advancedMockUseToken: boolean;
 
   constructor(baseUrl: string, token: string, logLevel: string = "info") {
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.tokenMap = new Map();
     this.defaultToken = "";
     this.logger = new Logger('YApiService', logLevel);
+    this.advancedMockCookie = process.env.YAPI_ADV_MOCK_COOKIE || "";
+    this.advancedMockAuthHeader = process.env.YAPI_ADV_MOCK_AUTH_HEADER || "";
+    this.advancedMockUseToken = process.env.YAPI_ADV_MOCK_USE_TOKEN === "true";
     
     // 解析token字符串，格式为: "projectId:token,projectId:token,..."
     if (token) {
@@ -109,6 +118,117 @@ export class YApiService {
       }
       throw new Error("与YApi服务器通信失败");
     }
+  }
+
+  private buildAdvancedMockHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+
+    for (const line of this.advancedMockAuthHeader.split(/\r?\n/)) {
+      const index = line.indexOf(":");
+      if (index > 0) {
+        headers[line.slice(0, index).trim()] = line.slice(index + 1).trim();
+      }
+    }
+
+    if (this.advancedMockCookie && !headers.Cookie) {
+      headers.Cookie = this.advancedMockCookie;
+    }
+
+    return headers;
+  }
+
+  private async advancedMockRequest<T>(
+    endpoint: string,
+    params: Record<string, any> = {},
+    projectId: string,
+    method: 'GET' | 'POST' = 'GET'
+  ): Promise<T> {
+    try {
+      this.logger.debug(`调用高级Mock ${this.baseUrl}${endpoint} 方法: ${method}`);
+
+      const token = this.getToken(projectId);
+      const headers = this.buildAdvancedMockHeaders();
+      let response;
+
+      if (method === 'GET') {
+        response = await axios.get(`${this.baseUrl}${endpoint}`, {
+          headers,
+          params: {
+            ...params,
+            ...(this.advancedMockUseToken && token ? { token } : {})
+          }
+        });
+      } else {
+        response = await axios.post(`${this.baseUrl}${endpoint}`, params, { headers });
+      }
+
+      if (response.data?.errcode === 40011) {
+        throw new Error("YApi 高级 Mock 插件要求登录态，请配置 YAPI_ADV_MOCK_COOKIE 或 YAPI_ADV_MOCK_AUTH_HEADER");
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        const errmsg = error.response.data?.errmsg || error.response.data?.message || "未知错误";
+        throw {
+          status: error.response.status,
+          message: errmsg,
+        };
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 获取高级 Mock case 列表
+   */
+  async listAdvancedMockCases(projectId: string, interfaceId: string): Promise<AdvancedMockListResponse> {
+    const response = await this.advancedMockRequest<AdvancedMockListResponse>(
+      "/api/plugin/advmock/case/list",
+      {
+        interface_id: interfaceId,
+        project_id: projectId
+      },
+      projectId,
+      'GET'
+    );
+
+    if (response.errcode !== 0) {
+      throw new Error(response.errmsg || "获取高级 Mock case 列表失败");
+    }
+
+    return response;
+  }
+
+  /**
+   * 新增或更新高级 Mock case
+   */
+  async saveAdvancedMockCase(params: AdvancedMockCaseParams): Promise<AdvancedMockSaveResponse> {
+    const payload = {
+      name: params.name,
+      ip_enable: params.ip_enable ?? false,
+      params: params.params || {},
+      code: params.code || "200",
+      delay: params.delay || 0,
+      headers: params.headers || [],
+      interface_id: params.interface_id,
+      project_id: params.project_id,
+      res_body: params.res_body,
+      ...(params.id ? { id: params.id } : {})
+    };
+
+    const response = await this.advancedMockRequest<AdvancedMockSaveResponse>(
+      "/api/plugin/advmock/case/save",
+      payload,
+      params.project_id,
+      'POST'
+    );
+
+    if (response.errcode !== 0) {
+      throw new Error(response.errmsg || "保存高级 Mock case 失败");
+    }
+
+    return response;
   }
 
   /**
@@ -482,4 +602,4 @@ export class YApiService {
       throw error;
     }
   }
-} 
+}

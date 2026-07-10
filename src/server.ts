@@ -102,6 +102,113 @@ export class YapiMcpServer {
   }
 
   private registerTools(): void {
+    // 列出高级 Mock case
+    this.server.tool(
+      "yapi_advmock_list_cases",
+      "列出 YApi 高级 Mock 插件的 case 列表",
+      {
+        projectId: z.string().describe("YApi 项目 ID"),
+        interfaceId: z.string().describe("YApi 接口 ID")
+      },
+      async ({ projectId, interfaceId }) => {
+        try {
+          this.logger.info(`获取高级 Mock case 列表: interfaceId=${interfaceId}, projectId=${projectId}`);
+          const response = await this.yapiService.listAdvancedMockCases(projectId, interfaceId);
+          return {
+            content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }],
+          };
+        } catch (error) {
+          this.logger.error(`获取高级 Mock case 列表时出错:`, error);
+          return {
+            content: [{ type: "text", text: `获取高级 Mock case 列表出错: ${error instanceof Error ? error.message : JSON.stringify(error)}` }],
+          };
+        }
+      }
+    );
+
+    // 保存高级 Mock case
+    this.server.tool(
+      "yapi_advmock_save_case",
+      "新增或更新 YApi 高级 Mock case；更新时传 caseId",
+      {
+        projectId: z.string().describe("YApi 项目 ID"),
+        interfaceId: z.string().describe("YApi 接口 ID"),
+        caseId: z.string().optional().describe("高级 Mock case ID，更新时传"),
+        name: z.string().describe("case 名称"),
+        paramsJson: z.string().optional().describe("匹配参数 JSON 字符串，例如 {\"id\":\"1\"}"),
+        resBody: z.string().describe("响应内容字符串，通常为 JSON.stringify 后的 JSON"),
+        code: z.string().optional().describe("HTTP 状态码，默认 200"),
+        delay: z.number().optional().describe("延迟毫秒，默认 0"),
+        headersJson: z.string().optional().describe("响应头 JSON 数组字符串，默认 []"),
+        ipEnable: z.boolean().optional().describe("是否启用 IP 匹配，默认 false")
+      },
+      async ({ projectId, interfaceId, caseId, name, paramsJson, resBody, code, delay, headersJson, ipEnable }) => {
+        try {
+          const response = await this.yapiService.saveAdvancedMockCase({
+            id: caseId,
+            name,
+            ip_enable: ipEnable ?? false,
+            params: paramsJson ? JSON.parse(paramsJson) : {},
+            code: code || "200",
+            delay: delay || 0,
+            headers: headersJson ? JSON.parse(headersJson) : [],
+            interface_id: interfaceId,
+            project_id: projectId,
+            res_body: resBody
+          });
+
+          return {
+            content: [{ type: "text", text: `高级 Mock case 保存成功:\n${JSON.stringify(response.data, null, 2)}` }],
+          };
+        } catch (error) {
+          this.logger.error(`保存高级 Mock case 时出错:`, error);
+          return {
+            content: [{ type: "text", text: `保存高级 Mock case 出错: ${error instanceof Error ? error.message : JSON.stringify(error)}` }],
+          };
+        }
+      }
+    );
+
+    // 创建主队社区帖子列表高级 Mock
+    this.server.tool(
+      "yapi_advmock_create_post_list_case",
+      "为主队社区帖子列表接口创建一份高级 Mock 样例，覆盖普通帖、热门事件、热门投票",
+      {
+        projectId: z.string().optional().describe("YApi 项目 ID，默认 356"),
+        interfaceId: z.string().optional().describe("帖子列表接口 ID，默认 6084"),
+        name: z.string().optional().describe("case 名称，默认 帖子列表-高级Mock"),
+        zoneId: z.string().optional().describe("匹配专区 ID，默认 3001"),
+        action: z.string().optional().describe("latest_reply 或 latest_publish，默认 latest_reply"),
+        nextData: z.string().optional().describe("匹配 next_data，默认空字符串")
+      },
+      async ({ projectId, interfaceId, name, zoneId, action, nextData }) => {
+        try {
+          const payload = this.buildPostListAdvancedMockPayload({
+            projectId: projectId || "356",
+            interfaceId: interfaceId || "6084",
+            name: name || "帖子列表-高级Mock",
+            zoneId: zoneId || "3001",
+            action: action || "latest_reply",
+            nextData: nextData ?? ""
+          });
+
+          const response = await this.yapiService.saveAdvancedMockCase(payload);
+
+          return {
+            content: [{
+              type: "text",
+              text: `帖子列表高级 Mock case 保存成功:\n请求:\n${JSON.stringify(payload, null, 2)}\n\n响应:\n${JSON.stringify(response.data, null, 2)}`
+            }],
+          };
+        } catch (error) {
+          this.logger.error(`创建帖子列表高级 Mock case 时出错:`, error);
+          return {
+            content: [{ type: "text", text: `创建帖子列表高级 Mock case 出错: ${error instanceof Error ? error.message : JSON.stringify(error)}` }],
+          };
+        }
+      }
+    );
+
     // 获取API接口详情
     this.server.tool(
       "yapi_get_api_desc",
@@ -557,6 +664,156 @@ export class YapiMcpServer {
         }
       }
     );
+  }
+
+  private buildPostListAdvancedMockPayload(options: {
+    projectId: string;
+    interfaceId: string;
+    name: string;
+    zoneId: string;
+    action: string;
+    nextData: string;
+  }) {
+    const zoneIdNumber = Number(options.zoneId);
+    const responseBody = {
+      status: "success",
+      msg: "success",
+      data: {
+        list: [
+          {
+            id: 900001,
+            filename: `community-zone${options.zoneId}-theme900001`,
+            title: "主队社区普通图文帖",
+            username: "湖人第六人",
+            avatar: "https://tu.duoduocdn.com/avatar/default.png",
+            uid: 10001,
+            up_count: "128",
+            text: "今天这场轮换太关键了，替补席的能量直接把气势带起来。",
+            create_time: "2026-07-10 14:30:00",
+            show_time: 1783674600,
+            reply_time: 1783674688,
+            zone_id: zoneIdNumber,
+            theme_type: 1,
+            image: [
+              {
+                url: "https://tu.duoduocdn.com/uploads/day_260710/mock_post_1.jpg",
+                thumb_url: "https://tu.duoduocdn.com/uploads/day_260710/mock_post_1_s.jpg",
+                width: 1280,
+                height: 720,
+                is_gif: 0
+              }
+            ]
+          },
+          {
+            id: 900002,
+            filename: `community-zone${options.zoneId}-theme900002`,
+            title: "赛后热议：末节连续三记三分改变走势",
+            username: "紫金观察员",
+            avatar: "https://tu.duoduocdn.com/avatar/default.png",
+            uid: 10002,
+            up_count: "342",
+            text: "这波攻防转换值得单独拉出来复盘。",
+            create_time: "2026-07-10 13:20:00",
+            show_time: 1783670400,
+            reply_time: 1783673988,
+            zone_id: zoneIdNumber,
+            theme_type: 2,
+            tag_info: {
+              text: "置顶",
+              day_color: "#2E9FFF",
+              night_color: "#3C9AE8"
+            },
+            event_info: {
+              title: "末节三分雨点燃主场",
+              hot_image: "https://tu.duoduocdn.com/uploads/day_260710/mock_event.jpg",
+              participant_text: "3435人参与",
+              hot_comment: [
+                {
+                  cid: 81001,
+                  uid: 20001,
+                  avatar: "https://tu.duoduocdn.com/avatar/default.png",
+                  username: "老球迷不熬夜",
+                  content: "这个回合之后对面暂停就很说明问题了。"
+                },
+                {
+                  cid: 81002,
+                  uid: 20002,
+                  avatar: "https://tu.duoduocdn.com/avatar/default.png",
+                  username: "战术板爱好者",
+                  content: "弱侧掩护质量很高，投手接球节奏完全打开。"
+                }
+              ]
+            }
+          },
+          {
+            id: 900003,
+            filename: `community-zone${options.zoneId}-theme900003`,
+            title: "你认为今晚最佳球员是谁？",
+            username: "主队投票官",
+            avatar: "https://tu.duoduocdn.com/avatar/default.png",
+            uid: 10003,
+            up_count: "89",
+            text: "来投出你心里的本场最佳。",
+            create_time: "2026-07-10 12:10:00",
+            show_time: 1783666200,
+            reply_time: 1783673000,
+            zone_id: zoneIdNumber,
+            theme_type: 3,
+            vote_info: {
+              vote_id: 70001,
+              title: "本场最佳球员",
+              hot_image: "https://tu.duoduocdn.com/uploads/day_260710/mock_vote.jpg",
+              participant_text: "8921人参与",
+              user_vote: 7000102,
+              options: [
+                {
+                  vote_option_id: 7000101,
+                  text: "首发控卫",
+                  image: "https://tu.duoduocdn.com/uploads/day_260710/mock_vote_1.jpg",
+                  percent: 35
+                },
+                {
+                  vote_option_id: 7000102,
+                  text: "替补锋线",
+                  image: "https://tu.duoduocdn.com/uploads/day_260710/mock_vote_2.jpg",
+                  percent: 48
+                },
+                {
+                  vote_option_id: 7000103,
+                  text: "防守中锋",
+                  percent: 17
+                }
+              ]
+            }
+          }
+        ],
+        next_data: options.action === "latest_publish" ? "publish_1783666200_900003" : "reply_1783673000_900003",
+        zone_info: {
+          zone_id: zoneIdNumber,
+          name: "主队社区",
+          logo: "https://tu.duoduocdn.com/avatar/default.png",
+          discuss: "12.8万",
+          view: "368.9万",
+          bg: "https://tu.duoduocdn.com/uploads/day_260710/mock_zone_bg.jpg"
+        }
+      }
+    };
+
+    return {
+      name: options.name,
+      ip_enable: false,
+      params: {
+        zone_id: options.zoneId,
+        action: options.action,
+        next_data: options.nextData
+      },
+      code: "200",
+      delay: 0,
+      headers: [],
+      interface_id: options.interfaceId,
+      project_id: options.projectId,
+      res_body: JSON.stringify(responseBody)
+    };
   }
 
   async connect(transport: Transport): Promise<void> {

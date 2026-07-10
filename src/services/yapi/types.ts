@@ -108,4 +108,38 @@ export interface ApiSearchResponse extends ApiResponse<{
   total: number;      // 总结果数
   count: number;      // 当前页结果数
   list: ApiSearchResultItem[]; // 结果列表
-}> {} 
+}> {}
+
+// YApi 高级 Mock case 保存参数
+export interface AdvancedMockCaseParams {
+  id?: string;             // 高级 Mock case ID，更新时传
+  name: string;            // case 名称
+  ip_enable?: boolean;     // 是否启用 IP 匹配
+  params?: Record<string, any>; // 匹配参数
+  code?: string;           // HTTP 状态码
+  delay?: number;          // 响应延迟，单位毫秒
+  headers?: any[];         // 响应头配置
+  interface_id: string;    // 接口 ID
+  project_id: string;      // 项目 ID
+  res_body: string;        // 响应体字符串
+}
+
+// YApi 高级 Mock case 返回值
+export interface AdvancedMockCase {
+  _id?: string;
+  id?: string;
+  name: string;
+  interface_id: string | number;
+  project_id: string | number;
+  params?: Record<string, any>;
+  res_body?: string;
+  [key: string]: any;
+}
+
+export interface AdvancedMockListResponse extends ApiResponse<AdvancedMockCase[] | {
+  list?: AdvancedMockCase[];
+  total?: number;
+  [key: string]: any;
+}> {}
+
+export interface AdvancedMockSaveResponse extends ApiResponse<AdvancedMockCase> {}
